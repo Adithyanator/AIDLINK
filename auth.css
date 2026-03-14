@@ -1,0 +1,172 @@
+/* auth.css — Shared styles for login & register pages */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --green: #3a9e5f;
+  --green-dim: rgba(58,158,95,0.12);
+  --green-light: #edf7f1;
+  --text: #1a1a1a;
+  --text-2: #666;
+  --text-3: #999;
+  --border: #e8e8e8;
+  --bg: #f5f5f5;
+  --white: #fff;
+  --red: #d94040;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+/* Card */
+.auth-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 420px;
+  padding: 36px 32px;
+}
+
+.auth-logo {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.auth-logo-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -.4px;
+  display: block;
+}
+
+.auth-logo-sub {
+  font-size: .8rem;
+  color: var(--text-3);
+  margin-top: 2px;
+  display: block;
+}
+
+.auth-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.auth-sub {
+  font-size: .85rem;
+  color: var(--text-2);
+  margin-bottom: 24px;
+}
+
+/* Form */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 14px;
+}
+
+.form-group label {
+  font-size: .8rem;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.form-control {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: .9rem;
+  color: var(--text);
+  background: var(--white);
+  outline: none;
+  transition: border-color .15s;
+  width: 100%;
+}
+.form-control:focus { border-color: var(--green); }
+
+/* Buttons */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 11px 20px;
+  border-radius: var(--radius-pill);
+  border: none;
+  font-family: inherit;
+  font-size: .9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.btn-primary { background: var(--green); color: #fff; margin-top: 8px; }
+.btn-primary:hover { opacity: .88; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Alert / error */
+.alert {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: .83rem;
+  margin-bottom: 14px;
+  display: none;
+}
+.alert.show { display: block; }
+.alert-error { background: rgba(217,64,64,.09); color: var(--red); border: 1px solid rgba(217,64,64,.2); }
+.alert-success { background: var(--green-light); color: var(--green); border: 1px solid rgba(58,158,95,.25); }
+
+/* OTP box */
+.otp-box {
+  background: var(--green-light);
+  border: 1px solid rgba(58,158,95,.3);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  text-align: center;
+  margin-bottom: 18px;
+  display: none;
+}
+.otp-box.show { display: block; }
+.otp-box-label { font-size: .75rem; color: var(--text-2); margin-bottom: 4px; }
+.otp-code { font-size: 2rem; font-weight: 700; letter-spacing: 8px; color: var(--green); }
+.otp-hint { font-size: .72rem; color: var(--text-3); margin-top: 4px; }
+
+/* Steps */
+.step { display: none; }
+.step.active { display: block; }
+
+/* Footer link */
+.auth-footer {
+  text-align: center;
+  margin-top: 20px;
+  font-size: .82rem;
+  color: var(--text-3);
+}
+.auth-footer a {
+  color: var(--green);
+  text-decoration: none;
+  font-weight: 500;
+}
+.auth-footer a:hover { text-decoration: underline; }
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
