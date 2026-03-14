@@ -35,15 +35,15 @@ const DEFAULT_STORE = {
 };
 
 // Initial load
-let store = JSON.parse(localStorage.getItem('reliefnet_store')) || DEFAULT_STORE;
+let store = JSON.parse(localStorage.getItem('aidlink_store')) || DEFAULT_STORE;
 
 function saveStore() {
-  localStorage.setItem('reliefnet_store', JSON.stringify(store));
+  localStorage.setItem('aidlink_store', JSON.stringify(store));
 }
 
 // Helper to reset store if needed (e.g. for testing)
 function resetStore() {
-  localStorage.setItem('reliefnet_store', JSON.stringify(DEFAULT_STORE));
+  localStorage.setItem('aidlink_store', JSON.stringify(DEFAULT_STORE));
   store = DEFAULT_STORE;
   location.reload();
 }

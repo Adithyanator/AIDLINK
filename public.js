@@ -123,8 +123,8 @@ function initPublicMap(centerLat, centerLng, nearbyCamps, isFallback = false, re
     const userIcon = L.divIcon({
       className: 'custom-map-marker',
       html: `<div class="marker-user"></div>`,
-      iconSize: [20, 20],
-      iconAnchor: [10, 10]
+      iconSize: [30, 30],
+      iconAnchor: [15, 15]
     });
     L.marker([realUserLat, realUserLng], { icon: userIcon, zIndexOffset: 1000 })
       .addTo(map)
@@ -298,4 +298,82 @@ function showPublicToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ======= VOLUNTEER MODAL =======
+function openVolunteerModal() {
+  document.getElementById('volunteerModal').classList.add('open');
+}
+
+function closeVolunteerModal() {
+  document.getElementById('volunteerModal').classList.remove('open');
+  // Reset state
+  backToVolStep1();
+  document.getElementById('volName').value = '';
+  document.getElementById('volPhone').value = '';
+  document.getElementById('volLocation').value = '';
+  document.getElementById('volHelp').value = '';
+  document.getElementById('volOtpInput').value = '';
+}
+
+function requestVolOtp() {
+  const name = document.getElementById('volName').value.trim();
+  const phone = document.getElementById('volPhone').value.trim();
+  const loc = document.getElementById('volLocation').value.trim();
+  const help = document.getElementById('volHelp').value;
+
+  if (!name || !phone || !loc || !help) {
+    showPublicToast('Please fill all fields first.');
+    return;
+  }
+
+  // Simulate OTP request
+  showPublicToast(`Sending OTP to ${phone}...`);
+  setTimeout(() => {
+    document.getElementById('volStep1').style.display = 'none';
+    document.getElementById('volStep2').style.display = 'block';
+    document.getElementById('volOTPTarget').textContent = phone;
+  }, 1000);
+}
+
+function backToVolStep1() {
+  document.getElementById('volStep1').style.display = 'block';
+  document.getElementById('volStep2').style.display = 'none';
+  document.getElementById('volOtpInput').value = '';
+}
+
+function submitVolunteer() {
+  const otp = document.getElementById('volOtpInput').value.trim();
+  if (otp.length < 6) {
+    showPublicToast('Please enter a valid 6-digit OTP');
+    return;
+  }
+
+  const name = document.getElementById('volName').value.trim();
+  const phone = document.getElementById('volPhone').value.trim();
+  const loc = document.getElementById('volLocation').value.trim();
+  const help = document.getElementById('volHelp').value;
+
+  // Add volunteer to store
+  if (!store.volunteers) store.volunteers = [];
+  store.volunteers.push({
+    id: Date.now(),
+    name,
+    phone,
+    location: loc,
+    help,
+    joined: 'just now',
+    status: 'active'
+  });
+
+  // Log activity
+  store.activity.unshift({
+    text: `New Volunteer: ${name} (${help}) near ${loc}`,
+    color: 'blue',
+    time: 'just now'
+  });
+
+  saveStore();
+  closeVolunteerModal();
+  showPublicToast(`Welcome to the team, ${name}! We'll contact you soon.`);
 }

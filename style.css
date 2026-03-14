@@ -1,5 +1,5 @@
 /* ===========================
-   RELIEFNET — Style System
+   AIDLink — Style System
    Minimal · Green Accent · No Shadows
    =========================== */
 
@@ -810,12 +810,27 @@ select.form-control { cursor: pointer; }
 }
 
 .marker-user {
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background-color: #4285F4;
-  border: 2px solid #fff;
-  box-shadow: 0 0 8px rgba(0,0,0,0.4);
+  border: 3px solid #fff;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  position: relative;
+  z-index: 9999;
+}
+
+.marker-user::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 30px;
+  height: 30px;
+  background-color: rgba(66, 133, 244, 0.4);
+  border-radius: 50%;
+  animation: radar-pulse 2s infinite ease-out;
+  z-index: -1;
 }
 
 .map-legend {

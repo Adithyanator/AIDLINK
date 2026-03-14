@@ -1,4 +1,4 @@
-// server.js — ReliefNet Express server
+// server.js — AIDLink Express server
 const express = require('express');
 const session = require('express-session');
 const cors    = require('cors');
@@ -13,7 +13,7 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));  // Serve all HTML/CSS/JS files
 app.use(session({
-  secret: 'reliefnet-secret-key-2024',
+  secret: 'aidlink-secret-key-2024',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 8 * 60 * 60 * 1000 } // 8-hour session
@@ -109,7 +109,7 @@ app.post('/api/logout', (req, res) => {
 // -------- Boot --------
 initDB().then(() => {
   app.listen(PORT, () => {
-    console.log(`\n  ReliefNet server running at http://localhost:${PORT}`);
+    console.log(`\n  AIDLink server running at http://localhost:${PORT}`);
     console.log(`  Register  : http://localhost:${PORT}/register.html`);
     console.log(`  Login     : http://localhost:${PORT}/login.html`);
     console.log(`  Dashboard : http://localhost:${PORT}/index.html\n`);

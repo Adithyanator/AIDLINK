@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ReliefNet — Disaster Rescue Management</title>
+  <title>AIDLink — Disaster Rescue Management</title>
   <meta name="description" content="Smart disaster rescue management platform connecting affected communities, relief camps, donors, and volunteers in real time."/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
@@ -32,20 +32,24 @@
 <!-- Sidebar Navigation -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <span class="logo-text">ReliefNet</span>
+    <span class="logo-text">AIDLink</span>
   </div>
   <nav class="sidebar-nav">
     <a href="#" class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
       Dashboard
     </a>
     <a href="#" class="nav-item" data-page="camps" onclick="navigateTo('camps')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"></path><path d="M19 21v-4"></path><path d="M19 17a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v4"></path><path d="M7 15V9l5-5 5 5v6"></path><path d="M12 15V9"></path></svg>
       Relief Camps
     </a>
     <a href="#" class="nav-item" data-page="donors" onclick="navigateTo('donors')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.78-8.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
       Donors
     </a>
 
     <a href="#" class="nav-item" data-page="sms" onclick="navigateTo('sms')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
       SMS Gateway
     </a>
   </nav>
@@ -64,7 +68,7 @@
 <!-- Mobile Top Bar -->
 <div class="topbar">
   <button class="menu-btn" onclick="toggleSidebar()" id="menuBtn">&#9776;</button>
-  <span class="topbar-title">ReliefNet</span>
+  <span class="topbar-title">AIDLink</span>
   <span class="topbar-alert" id="topbarAlert"></span>
 </div>
 
@@ -95,7 +99,6 @@
         <div class="stat-number" id="statDonors">89</div>
         <div class="stat-label">Donors Active</div>
       </div>
-
     </div>
 
     <!-- Map -->
@@ -139,17 +142,13 @@
   </section>
 
 
-  <!-- ===================== DONORS PAGE ===================== -->
+  <!-- ===================== PLEDGES PAGE ===================== -->
   <section class="page" id="page-donors">
     <div class="page-header">
       <div>
-        <h1>Donors</h1>
-        <p class="subtitle">Resource contributors and their pledges</p>
+        <h1>Incoming Resource Pledges</h1>
+        <p class="subtitle">Manage resource contributions and incoming pledges</p>
       </div>
-      <button class="btn btn-primary" onclick="openModal('addDonorModal')">+ Register Donor</button>
-    </div>
-    <div class="donors-grid" id="donorsGrid">
-      <!-- populated by JS -->
     </div>
 
     <!-- PLEDGES SECTION -->
@@ -165,13 +164,15 @@
   </section>
 
   <!-- Donation Confirmation Modal -->
-  <div class="modal" id="donationActionModal">
-    <div class="modal-content" style="max-width:400px">
-      <h2 id="donationActionTitle">Accept Donation?</h2>
-      <p id="donationActionText" style="margin:1rem 0;color:var(--text-2);font-size:.9rem"></p>
-      <div class="modal-actions" style="display:flex;gap:10px">
-        <button class="btn btn-outline" style="flex:1" onclick="closeModal('donationActionModal')">Cancel</button>
-        <button class="btn btn-primary" style="flex:1" id="confirmDonationBtn">Confirm</button>
+  <div class="modal-overlay" id="donationActionModal">
+    <div class="modal" style="padding: 24px;">
+      <div class="modal-content" style="max-width:400px;">
+        <h2 id="donationActionTitle">Accept Donation?</h2>
+        <p id="donationActionText" style="margin:1rem 0;color:var(--text-2);font-size:.9rem"></p>
+        <div class="modal-actions" style="display:flex;gap:10px">
+          <button class="btn btn-outline" style="flex:1" onclick="closeModal('donationActionModal')">Cancel</button>
+          <button class="btn btn-primary" style="flex:1" id="confirmDonationBtn">Confirm</button>
+        </div>
       </div>
     </div>
   </div>
@@ -314,40 +315,6 @@
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" onclick="closeModal('addCampModal')">Cancel</button>
         <button type="submit" class="btn btn-primary">Register Camp</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Add Donor Modal -->
-<div class="modal-overlay" id="addDonorModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Register Donor</h2>
-      <button class="modal-close" onclick="closeModal('addDonorModal')">✕</button>
-    </div>
-    <form onsubmit="submitDonor(event)">
-      <div class="form-group">
-        <label>Name / Organization</label>
-        <input type="text" class="form-control" id="donorName" placeholder="e.g. Aid India Trust" required/>
-      </div>
-      <div class="form-group">
-        <label>Contact Number</label>
-        <input type="tel" class="form-control" id="donorPhone" placeholder="+91 XXXXXXXXXX"/>
-      </div>
-      <div class="form-group">
-        <label>Primary Resource</label>
-        <select class="form-control" id="donorResource">
-          <option>Food</option>
-          <option>Water</option>
-          <option>Medicine</option>
-          <option>Clothes</option>
-          <option>Funds</option>
-        </select>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('addDonorModal')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Register</button>
       </div>
     </form>
   </div>

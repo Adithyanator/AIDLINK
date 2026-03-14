@@ -1,5 +1,5 @@
 /* ===========================
-   app.js — ReliefNet Logic
+   app.js — AIDLink Logic
    =========================== */
 
 
@@ -131,8 +131,8 @@ function renderDashboardMap(centerLat, centerLng, campsToRender, hasUserLocation
     const userIcon = L.divIcon({
       className: 'custom-map-marker',
       html: `<div class="marker-user"></div>`,
-      iconSize: [20, 20],
-      iconAnchor: [10, 10]
+      iconSize: [30, 30],
+      iconAnchor: [15, 15]
     });
     L.marker([userLat, userLng], { icon: userIcon, zIndexOffset: 1000 })
       .addTo(map)
@@ -349,24 +349,7 @@ function openFulfillNeed(campId, campName) {
 }
 
 
-// ======= RENDER DONORS =======
-// ======= RENDER DONORS =======
-function renderDonors() {
-  const grid = document.getElementById('donorsGrid');
-  grid.innerHTML = store.donors.map(d => `
-    <div class="donor-card">
-      <div class="donor-avatar">${d.name.charAt(0)}</div>
-      <div>
-        <div class="donor-name">${d.name}</div>
-        <span class="donor-resource">${d.resource}</span>
-        <div class="donor-phone">${d.phone}</div>
-      </div>
-    </div>
-  `).join('') || '<p style="padding:1rem;color:var(--text-3)">No registered donors yet.</p>';
-  
-  renderPledges();
-}
-
+// ======= RENDER PLEDGES =======
 function renderPledges() {
   const list = document.getElementById('pledgesList');
   const pendingOnes = store.donations.filter(d => d.status === 'pending');
@@ -440,16 +423,7 @@ document.getElementById('confirmDonationBtn').onclick = function() {
   if (activeDonationAction === 'accept') {
     donation.status = 'accepted';
     
-    // 1. Add to donors list
-    store.donors.unshift({
-      id: Date.now(),
-      name: donation.name,
-      phone: donation.phone,
-      resource: donation.resource,
-      contributions: 1
-    });
-
-    // 2. Sync Camp Needs
+    // 1. Sync Camp Needs
     const camp = store.camps.find(c => c.id == donation.campId);
     if (camp && camp.needs) {
       // Remove matching need (case insensitive)
@@ -481,7 +455,7 @@ document.getElementById('confirmDonationBtn').onclick = function() {
 
 // ======= STORAGE SYNC =======
 window.addEventListener('storage', (e) => {
-  if (e.key === 'reliefnet_store') {
+  if (e.key === 'aidlink_store') {
     store = JSON.parse(e.newValue);
     renderDashboard();
     renderDonors();
@@ -588,45 +562,24 @@ function submitCamp(e) {
   showToast(`${name} registered successfully ✓`);
 }
 
-function submitDonor(e) {
-  e.preventDefault();
-  const name     = document.getElementById('donorName').value;
-  const phone    = document.getElementById('donorPhone').value;
-  const resource = document.getElementById('donorResource').value;
-
-  store.donors.push({ id: store.donors.length+1, name, phone, resource, contributions:0 });
-  store.activity.unshift({ text:`Donor registered: ${name} (${resource})`, color:'green', time:'just now' });
-  closeModal('addDonorModal');
-  e.target.reset();
-  renderDonors();
-  renderDashboard();
-  showToast(`${name} registered as donor ✓`);
-}
-
-
-
-function submitDonation(e) {
-  e.preventDefault();
-  const camp = document.getElementById('donateCamp').value;
-  const type = document.getElementById('donateType').value;
-  const qty  = document.getElementById('donateQty').value;
-
-  if (!camp || !qty) { showToast('Please fill all fields'); return; }
-
-  store.activity.unshift({ text:`Donation: ${qty} ${type} → ${camp}`, color:'green', time:'just now' });
-  renderDashboard();
-  e.target.reset();
-  showToast(`Donation of ${qty} ${type} confirmed for ${camp} ✓`);
-}
-
 // ======= INIT =======
 function init() {
   renderDashboard();
   initMap();
   renderCamps();
-  renderDonors();
+  renderPledges();
 
   renderSMSParsed();
 }
 
 init();
+
+// Sync data across tabs
+window.addEventListener('storage', function(e) {
+  if (e.key === 'aidlink_store') {
+    store = JSON.parse(e.newValue);
+    renderDashboard();
+    renderCamps();
+    renderPledges();
+  }
+});

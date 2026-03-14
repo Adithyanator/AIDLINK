@@ -3,7 +3,7 @@ const path = require('path');
 const fs   = require('fs');
 const initSqlJs = require('sql.js');
 
-const DB_PATH = path.join(__dirname, 'reliefnet.db');
+const DB_PATH = path.join(__dirname, 'aidlink.db');
 
 let db; // global db instance
 
