@@ -2,49 +2,6 @@
    app.js — ReliefNet Logic
    =========================== */
 
-// ======= DATA STORE =======
-const store = {
-  camps: [
-    { id:1, name:'Camp Alpha', district:'District 3', capacity:350, occupied:280, contact:'Rajan Iyer', status:'active', needs:['Food','Medicine'], zone:'critical' },
-    { id:2, name:'Camp Beta',  district:'District 7', capacity:200, occupied:110, contact:'Priya Shah',  status:'active', needs:['Water','Clothes'],  zone:'moderate' },
-    { id:3, name:'Camp Gamma', district:'District 11',capacity:500, occupied:490, contact:'Arjun Mehta', status:'full',   needs:['Food','Water','Medicine'], zone:'critical' },
-    { id:4, name:'Camp Delta', district:'District 2', capacity:150, occupied:60,  contact:'Kavya Nair',  status:'active', needs:['Blankets'],  zone:'moderate' },
-    { id:5, name:'Camp Echo',  district:'District 14',capacity:300, occupied:95,  contact:'Vikram Das',  status:'active', needs:[],            zone:'stable' },
-  ],
-  requests: [
-    { id:1, location:'Sector 4, Chennai',   pin:'600001', type:'Food',     people:45, urgency:'critical', status:'pending',   time:'2m ago' },
-    { id:2, location:'Anna Nagar, Chennai', pin:'600040', type:'Water',    people:120, urgency:'critical', status:'pending',  time:'5m ago' },
-    { id:3, location:'Guindy, Chennai',     pin:'600032', type:'Medicine', people:28,  urgency:'critical', status:'pending',  time:'9m ago' },
-    { id:4, location:'T Nagar, Chennai',    pin:'600017', type:'Clothes',  people:80,  urgency:'moderate', status:'pending',  time:'18m ago' },
-    { id:5, location:'Velachery, Chennai',  pin:'600042', type:'Food',     people:35,  urgency:'moderate', status:'fulfilled',time:'32m ago' },
-    { id:6, location:'Tambaram, Chennai',   pin:'600045', type:'Shelter',  people:60,  urgency:'low',      status:'pending',  time:'47m ago' },
-  ],
-  donors: [
-    { id:1, name:'Aid India Trust',    phone:'+91 9800000001', resource:'Food',      contributions:12 },
-    { id:2, name:'WaterFirst NGO',     phone:'+91 9800000002', resource:'Water',     contributions:8  },
-    { id:3, name:'MediHelp Foundation',phone:'+91 9800000003', resource:'Medicine',  contributions:5  },
-    { id:4, name:'Relief Corps',       phone:'+91 9800000004', resource:'Clothes',   contributions:20 },
-    { id:5, name:'Suresh Kumar',       phone:'+91 9800000005', resource:'Funds',     contributions:3  },
-    { id:6, name:'Chennai Gives',      phone:'+91 9800000006', resource:'Food',      contributions:9  },
-  ],
-  volunteers: [
-    { id:1, name:'Ananya Roy',    phone:'+91 9700000001', skill:'Delivery',        status:'available', camp:'Camp Alpha' },
-    { id:2, name:'Rahul Singh',   phone:'+91 9700000002', skill:'Medical',         status:'deployed',  camp:'Camp Gamma' },
-    { id:3, name:'Deepa Menon',   phone:'+91 9700000003', skill:'Logistics',       status:'available', camp:'Camp Beta'  },
-    { id:4, name:'Kartik Pillai', phone:'+91 9700000004', skill:'Communication',   status:'available', camp:'Camp Delta' },
-    { id:5, name:'Sonia Arora',   phone:'+91 9700000005', skill:'Search & Rescue', status:'deployed',  camp:'Camp Alpha' },
-    { id:6, name:'Mohan Krishnan',phone:'+91 9700000006', skill:'Delivery',        status:'available', camp:'Camp Echo'  },
-  ],
-  activity: [
-    { text:'Donation: 200 food packets received at Camp Alpha', color:'green',  time:'2m ago' },
-    { text:'New request: Water · 120 people · Anna Nagar',      color:'red',    time:'5m ago' },
-    { text:'Volunteer Rahul Singh deployed to Camp Gamma',       color:'amber',  time:'12m ago'},
-    { text:'Camp Echo updated needs — Shelter required',         color:'amber',  time:'25m ago'},
-    { text:'SMS received: HELP FOOD 5 PEOPLE LOCATION 600001',  color:'gray',   time:'29m ago'},
-    { text:'Request #5 fulfilled — Velachery Food aid delivered',color:'green',  time:'45m ago'},
-  ],
-  smsLog: [],
-};
 
 // Track SMS-parsed requests
 let smsParsed = [
@@ -100,27 +57,6 @@ function renderDashboard() {
   document.getElementById('statCamps').textContent = store.camps.filter(c => c.status === 'active').length;
   document.getElementById('statRequests').textContent = store.requests.filter(r => r.status === 'pending').length;
   document.getElementById('statDonors').textContent = store.donors.length;
-  document.getElementById('statVolunteers').textContent = store.volunteers.length;
-
-  // Priority list
-  const pl = document.getElementById('priorityList');
-  const sorted = [...store.requests]
-    .filter(r => r.status === 'pending')
-    .sort((a, b) => {
-      const rank = { critical: 0, moderate: 1, low: 2 };
-      return rank[a.urgency] - rank[b.urgency] || b.people - a.people;
-    })
-    .slice(0, 5);
-
-  pl.innerHTML = sorted.map(r => `
-    <div class="req-item">
-      <span class="req-badge ${r.urgency}">${r.urgency}</span>
-      <div>
-        <div class="req-title">${r.type} · ${r.people} people</div>
-        <div class="req-meta">${r.location} · ${r.pin}</div>
-      </div>
-    </div>
-  `).join('');
 
   // Activity
   const al = document.getElementById('activityList');
@@ -133,13 +69,149 @@ function renderDashboard() {
   `).join('');
 }
 
-// ======= MAP TOOLTIP =======
-function showZoneInfo(name) {
-  const tip = document.getElementById('mapTooltip');
-  tip.textContent = name;
-  tip.style.display = 'block';
-  clearTimeout(tip._t);
-  tip._t = setTimeout(() => { tip.style.display = 'none'; }, 2500);
+// Helper: Haversine distance
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+
+let map;
+function initMap() {
+  if (!navigator.geolocation) {
+    console.warn("Geolocation not supported.");
+    renderDashboardMap(13.0827, 80.2707, store.camps, false);
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const userLat = position.coords.latitude;
+      const userLng = position.coords.longitude;
+      const defaultLat = 13.0827; 
+      const defaultLng = 80.2707;
+      
+      const offsetLat = userLat - defaultLat;
+      const offsetLng = userLng - defaultLng;
+
+      // Translate camps to the user's location for the demo
+      const shiftedCamps = store.camps.map(c => ({
+        ...c,
+        lat: c.lat + offsetLat,
+        lng: c.lng + offsetLng
+      }));
+
+      renderDashboardMap(userLat, userLng, shiftedCamps, true, userLat, userLng);
+    },
+    (error) => {
+      console.warn("Geolocation failed/denied.", error);
+      renderDashboardMap(13.0827, 80.2707, store.camps, false);
+    },
+    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+  );
+}
+
+function renderDashboardMap(centerLat, centerLng, campsToRender, hasUserLocation = false, userLat = null, userLng = null) {
+  if (map) map.remove(); // allow re-initialization if needed
+  map = L.map('map').setView([centerLat, centerLng], 12);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(map);
+
+  const bounds = L.latLngBounds();
+
+  if (hasUserLocation) {
+    const userIcon = L.divIcon({
+      className: 'custom-map-marker',
+      html: `<div class="marker-user"></div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+    L.marker([userLat, userLng], { icon: userIcon, zIndexOffset: 1000 })
+      .addTo(map)
+      .bindPopup('<strong>Ward Member (You)</strong>');
+    bounds.extend([userLat, userLng]);
+  }
+
+  campsToRender.forEach(c => {
+    let colorHex = '#4c9964'; // stable
+    if (c.zone === 'critical') colorHex = '#dc3535';
+    if (c.zone === 'moderate') colorHex = '#ffa000';
+
+    const customIcon = L.divIcon({
+      className: 'custom-map-marker',
+      html: `
+        <div class="camp-marker-serious">
+          <div class="marker-pulse" style="background-color: ${colorHex}"></div>
+          <svg class="marker-icon" width="28" height="32" viewBox="0 0 24 24" fill="${colorHex}" stroke="#fff" stroke-width="1.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M12 8v8M8 12h8" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+      `,
+      iconSize: [28, 32],
+      iconAnchor: [14, 16]
+    });
+
+    bounds.extend([c.lat, c.lng]);
+
+    L.marker([c.lat, c.lng], { icon: customIcon })
+      .addTo(map)
+      .bindPopup(`<strong>${c.name}</strong><br>${c.district}<br>Status: ${c.status}<br>Capacity: ${c.occupied}/${c.capacity} (${Math.round(c.occupied/c.capacity*100)}%)`);
+  });
+
+  if (campsToRender.length > 0) {
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+  }
+
+  // Add Locate Me control if user location is known
+  if (hasUserLocation) {
+    const LocateControl = L.Control.extend({
+      options: { position: 'bottomright' },
+      onAdd: function () {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        container.style.backgroundColor = '#fff';
+        container.style.width = '34px';
+        container.style.height = '34px';
+        container.style.cursor = 'pointer';
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
+        container.title = 'Focus on my location';
+        container.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>`;
+        container.onclick = function(e) {
+          e.stopPropagation();
+          map.setView([userLat, userLng], 14, { animate: true });
+        }
+        return container;
+      }
+    });
+    map.addControl(new LocateControl());
+  }
+
+  // Add Legend
+  const LegendControl = L.Control.extend({
+    options: { position: 'bottomleft' },
+    onAdd: function () {
+      const div = L.DomUtil.create('div', 'map-legend');
+      div.innerHTML = `
+        <div class="legend-title">Legend</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#dc3535"></span> Critical</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#ffa000"></span> Moderate</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#4c9964"></span> Stable</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#4285F4"></span> You</div>
+      `;
+      return div;
+    }
+  });
+  map.addControl(new LegendControl());
 }
 
 // ======= RENDER CAMPS =======
@@ -155,9 +227,15 @@ function renderCamps(filter = '') {
   grid.innerHTML = data.map(c => {
     const pct = Math.round((c.occupied / c.capacity) * 100);
     const barClass = pct >= 90 ? 'red' : pct >= 70 ? 'amber' : '';
-    const needs = c.needs.length
-      ? c.needs.map(n => `<span class="need-tag ${['Food','Water','Medicine'].includes(n) ? 'urgent' : ''}">${n}</span>`).join('')
-      : `<span class="need-tag">No urgent needs</span>`;
+    const urgentTypes = ['Food','Water','Medicine'];
+
+    const needTags = c.needs.length
+      ? c.needs.map(n => `
+          <span class="need-tag ${urgentTypes.includes(n) ? 'urgent' : ''}">
+            ${n}
+            <button class="need-remove-btn" onclick="fulfillNeedInline(${c.id}, '${n}')" title="Mark as fulfilled">&#10005;</button>
+          </span>`).join('')
+      : `<span class="need-tag" style="color:var(--text-3)">No current needs</span>`;
 
     return `
       <div class="camp-card">
@@ -180,9 +258,11 @@ function renderCamps(filter = '') {
         <div class="capacity-bar">
           <div class="capacity-fill ${barClass}" style="width:${pct}%"></div>
         </div>
-        <div class="camp-needs">${needs}</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-sm btn-outline-green" onclick="showToast('Donating to ${c.name}...')">Donate</button>
+        <div class="camp-needs-label">Current Needs</div>
+        <div class="camp-needs">${needTags}</div>
+        <div style="display:flex;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);flex-wrap:wrap">
+          <button class="btn btn-sm btn-primary" onclick="openAddNeed(${c.id}, '${c.name}')">+ Add Need</button>
+          <button class="btn btn-sm btn-outline-green" onclick="openFulfillNeed(${c.id}, '${c.name}')">Fulfill Need</button>
           <button class="btn btn-sm btn-ghost" onclick="showToast('Contact: ${c.contact}')">Contact</button>
         </div>
       </div>
@@ -194,53 +274,82 @@ function filterCamps() {
   renderCamps(document.getElementById('campSearch').value.toLowerCase());
 }
 
-// ======= RENDER REQUESTS =======
-let currentFilter = 'all';
+// ======= CAMP NEEDS MANAGEMENT =======
 
-function renderRequests(filter) {
-  currentFilter = filter;
-  const tbody = document.getElementById('requestsBody');
-  const data = filter === 'all'
-    ? store.requests
-    : store.requests.filter(r => r.urgency === filter || r.status === filter);
-
-  tbody.innerHTML = data.map(r => `
-    <tr>
-      <td>
-        <div style="font-weight:500">${r.location}</div>
-        <div style="color:var(--text-3);font-size:.78rem">PIN ${r.pin}</div>
-      </td>
-      <td>${r.type}</td>
-      <td>${r.people}</td>
-      <td><span class="badge ${r.urgency}">${r.urgency}</span></td>
-      <td><span class="badge ${r.status}">${r.status}</span></td>
-      <td>
-        ${r.status === 'pending'
-          ? `<button class="btn btn-sm btn-outline-green" onclick="fulfillRequest(${r.id})">Fulfil</button>`
-          : `<span style="color:var(--text-3);font-size:.8rem">${r.time}</span>`
-        }
-      </td>
-    </tr>
-  `).join('') || '<tr><td colspan="6" style="padding:20px;color:var(--text-3)">No requests.</td></tr>';
+function openAddNeed(campId, campName) {
+  document.getElementById('addNeedCampId').value = campId;
+  document.getElementById('addNeedModalTitle').textContent = `Add Need — ${campName}`;
+  document.querySelector('input[name="needPriority"][value="urgent"]').checked = true;
+  openModal('addNeedModal');
 }
 
-function filterRequests(f, btn) {
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderRequests(f);
-}
+function submitAddNeed(e) {
+  e.preventDefault();
+  const campId = parseInt(document.getElementById('addNeedCampId').value);
+  const type   = document.getElementById('addNeedType').value;
+  const priority = document.querySelector('input[name="needPriority"]:checked').value;
+  const camp   = store.camps.find(c => c.id === campId);
+  if (!camp) return;
 
-function fulfillRequest(id) {
-  const req = store.requests.find(r => r.id === id);
-  if (req) {
-    req.status = 'fulfilled';
-    store.activity.unshift({ text:`Request #${id} fulfilled — ${req.type} aid to ${req.location}`, color:'green', time:'just now' });
-    renderRequests(currentFilter);
-    renderDashboard();
-    showToast('Request marked as fulfilled ✓');
+  if (camp.needs.includes(type)) {
+    showToast(`${type} is already listed as a need for ${camp.name}`);
+    closeModal('addNeedModal');
+    return;
   }
+
+  if (priority === 'urgent') {
+    camp.needs.unshift(type); // urgent needs go to front
+  } else {
+    camp.needs.push(type);
+  }
+
+  store.activity.unshift({ text:`${camp.name} added need: ${type} (${priority})`, color:'amber', time:'just now' });
+  closeModal('addNeedModal');
+  e.target.reset();
+  renderCamps(document.getElementById('campSearch').value.toLowerCase());
+  renderDashboard();
+  showToast(`${type} added to ${camp.name}'s needs ✓`);
 }
 
+function fulfillNeedInline(campId, needType) {
+  const camp = store.camps.find(c => c.id === campId);
+  if (!camp) return;
+  camp.needs = camp.needs.filter(n => n !== needType);
+  store.activity.unshift({ text:`${camp.name}: ${needType} need fulfilled`, color:'green', time:'just now' });
+  renderCamps(document.getElementById('campSearch').value.toLowerCase());
+  renderDashboard();
+  showToast(`${needType} marked as fulfilled for ${camp.name} ✓`);
+}
+
+function openFulfillNeed(campId, campName) {
+  const camp = store.camps.find(c => c.id === campId);
+  if (!camp) return;
+
+  document.getElementById('fulfillNeedModalTitle').textContent = `Fulfill a Need — ${campName}`;
+  const body = document.getElementById('fulfillNeedBody');
+
+  if (!camp.needs.length) {
+    body.innerHTML = `<p style="color:var(--text-3);font-size:.875rem;padding:4px 0 16px">This camp has no current needs listed.</p>
+      <div style="display:flex;justify-content:flex-end"><button class="btn btn-ghost btn-sm" onclick="closeModal('fulfillNeedModal')">Close</button></div>`;
+  } else {
+    body.innerHTML = `
+      <p style="color:var(--text-2);font-size:.83rem;margin-bottom:14px">Select a need that has been supplied:</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${camp.needs.map(n => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:8px">
+            <span style="font-weight:500;font-size:.9rem">${n}</span>
+            <button class="btn btn-sm btn-outline-green" onclick="fulfillNeedInline(${campId},'${n}');closeModal('fulfillNeedModal')">Mark Fulfilled</button>
+          </div>`).join('')}
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:16px">
+        <button class="btn btn-ghost btn-sm" onclick="closeModal('fulfillNeedModal')">Cancel</button>
+      </div>`;
+  }
+  openModal('fulfillNeedModal');
+}
+
+
+// ======= RENDER DONORS =======
 // ======= RENDER DONORS =======
 function renderDonors() {
   const grid = document.getElementById('donorsGrid');
@@ -253,30 +362,132 @@ function renderDonors() {
         <div class="donor-phone">${d.phone}</div>
       </div>
     </div>
-  `).join('');
+  `).join('') || '<p style="padding:1rem;color:var(--text-3)">No registered donors yet.</p>';
+  
+  renderPledges();
 }
 
-// ======= RENDER VOLUNTEERS =======
-function renderVolunteers() {
-  const grid = document.getElementById('volunteersGrid');
-  grid.innerHTML = store.volunteers.map(v => `
-    <div class="vol-card">
-      <div class="vol-header">
-        <div class="vol-avatar">${v.name.charAt(0)}</div>
+function renderPledges() {
+  const list = document.getElementById('pledgesList');
+  const pendingOnes = store.donations.filter(d => d.status === 'pending');
+  
+  if (pendingOnes.length === 0) {
+    list.innerHTML = '<p style="padding:1.5rem;text-align:center;color:var(--text-3);background:var(--bg);border-radius:12px;border:1px dashed var(--border)">No pending donation pledges at the moment.</p>';
+    return;
+  }
+
+  list.innerHTML = pendingOnes.map(d => `
+    <div class="card" style="margin-bottom:1rem; border-left: 4px solid var(--amber)">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; padding:1.25rem">
         <div>
-          <div class="vol-name">${v.name}</div>
-          <span class="vol-skill">${v.skill}</span>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px">
+            <span class="req-badge moderate">PLEDGE</span>
+            <strong style="font-size:1rem">${d.resource} </strong>
+          </div>
+          <div style="font-size:.9rem; color:var(--text-2); margin-bottom:8px">
+            <strong>${d.qty}</strong> for <strong>${d.campName}</strong>
+          </div>
+          <div style="font-size:.85rem; color:var(--text-3)">
+            From: ${d.name} (${d.phone}) · ${d.time}
+          </div>
+          ${d.notes ? `<div style="margin-top:8px; font-style:italic; font-size:.85rem; color:var(--text-2); background:f9f9f9; padding:6px; border-radius:4px">" ${d.notes} "</div>` : ''}
         </div>
-        <span class="vol-status-badge ${v.status}">${v.status}</span>
-      </div>
-      <div class="vol-meta">
-        <span>${v.camp}</span>
-        <span>·</span>
-        <span>${v.phone}</span>
+        <div style="display:flex; gap:8px">
+          <button class="btn btn-outline" style="padding:6px 12px; font-size:.85rem; border-color:#dc3535; color:#dc3535" onclick="handleDonationAction('${d.id}', 'decline')">Decline</button>
+          <button class="btn btn-primary" style="padding:6px 12px; font-size:.85rem" onclick="handleDonationAction('${d.id}', 'accept')">Accept</button>
+        </div>
       </div>
     </div>
   `).join('');
 }
+
+let activeDonationId = null;
+let activeDonationAction = null;
+
+function handleDonationAction(id, action) {
+  activeDonationId = id;
+  activeDonationAction = action;
+  const donation = store.donations.find(d => d.id == id);
+  if (!donation) return;
+
+  const title = document.getElementById('donationActionTitle');
+  const text = document.getElementById('donationActionText');
+  const btn = document.getElementById('confirmDonationBtn');
+
+  if (action === 'accept') {
+    title.textContent = 'Accept Resource Pledge?';
+    title.style.color = 'var(--green)';
+    text.textContent = `Are you sure you want to accept ${donation.qty} of ${donation.resource} for ${donation.campName}? This will update the camp needs automatically.`;
+    btn.textContent = 'Accept Donation';
+    btn.className = 'btn btn-primary';
+  } else {
+    title.textContent = 'Decline Resource Pledge?';
+    title.style.color = '#dc3535';
+    text.textContent = `Are you sure you want to decline this donation from ${donation.name}?`;
+    btn.textContent = 'Decline';
+    btn.className = 'btn';
+    btn.style.backgroundColor = '#dc3535';
+    btn.style.color = '#fff';
+  }
+
+  openModal('donationActionModal');
+}
+
+document.getElementById('confirmDonationBtn').onclick = function() {
+  const donation = store.donations.find(d => d.id == activeDonationId);
+  if (!donation) return;
+
+  if (activeDonationAction === 'accept') {
+    donation.status = 'accepted';
+    
+    // 1. Add to donors list
+    store.donors.unshift({
+      id: Date.now(),
+      name: donation.name,
+      phone: donation.phone,
+      resource: donation.resource,
+      contributions: 1
+    });
+
+    // 2. Sync Camp Needs
+    const camp = store.camps.find(c => c.id == donation.campId);
+    if (camp && camp.needs) {
+      // Remove matching need (case insensitive)
+      camp.needs = camp.needs.filter(n => n.toLowerCase() !== donation.resource.toLowerCase());
+    }
+
+    // 3. Activity Log
+    store.activity.unshift({
+      text: `Donation ACCEPTED: ${donation.qty} ${donation.resource} delivered to ${donation.campName}`,
+      color: 'green',
+      time: 'just now'
+    });
+
+    showToast(`Donation for ${donation.campName} accepted and camp needs updated ✓`);
+  } else {
+    donation.status = 'declined';
+    store.activity.unshift({
+      text: `Donation DECLINED: ${donation.qty} ${donation.resource} from ${donation.name}`,
+      color: 'gray',
+      time: 'just now'
+    });
+    showToast('Donation pledge declined.');
+  }
+
+  closeModal('donationActionModal');
+  saveStore();
+  renderDashboard();
+};
+
+// ======= STORAGE SYNC =======
+window.addEventListener('storage', (e) => {
+  if (e.key === 'reliefnet_store') {
+    store = JSON.parse(e.newValue);
+    renderDashboard();
+    renderDonors();
+  }
+});
+
 
 // ======= SMS GATEWAY =======
 function renderSMSParsed() {
@@ -335,7 +546,6 @@ function sendSMS() {
 
     store.activity.unshift({ text:`SMS received: ${raw}`, color:'gray', time:'just now' });
     renderDashboard();
-    renderRequests(currentFilter);
     renderSMSParsed();
     showToast('SMS parsed and added to queue ✓');
   } else {
@@ -353,35 +563,6 @@ document.getElementById('smsInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') sendSMS();
 });
 
-// ======= FORM SUBMISSIONS =======
-function submitNeedRequest(e) {
-  e.preventDefault();
-  const location = document.getElementById('needLocation').value;
-  const pin = document.getElementById('needPin').value;
-  const type = document.getElementById('needType').value;
-  const people = parseInt(document.getElementById('needPeople').value);
-  const urgency = document.querySelector('input[name=urgency]:checked').value;
-
-  // Duplicate PIN check
-  const dup = store.requests.find(r => r.pin === pin && r.status === 'pending');
-  if (dup) {
-    showToast(`⚠ A pending request already exists for PIN ${pin}`);
-    closeModal('reportNeedModal');
-    e.target.reset();
-    return;
-  }
-
-  const newId = store.requests.length + 1;
-  store.requests.push({ id:newId, location, pin, type, people, urgency, status:'pending', time:'just now' });
-  store.activity.unshift({ text:`New request: ${type} · ${people} people · ${location}`, color: urgency === 'critical' ? 'red' : 'amber', time:'just now' });
-
-  closeModal('reportNeedModal');
-  e.target.reset();
-  renderDashboard();
-  renderRequests(currentFilter);
-  showToast('Need request submitted ✓');
-}
-
 function submitCamp(e) {
   e.preventDefault();
   const name     = document.getElementById('campName').value;
@@ -390,6 +571,8 @@ function submitCamp(e) {
   const contact  = document.getElementById('campContact').value;
 
   store.camps.push({ id: store.camps.length+1, name, district, capacity, occupied:0, contact, status:'active', needs:[], zone:'stable' });
+  saveStore();
+  renderDashboard();
   store.activity.unshift({ text:`Camp registered: ${name} · ${district}`, color:'green', time:'just now' });
   closeModal('addCampModal');
   e.target.reset();
@@ -420,20 +603,7 @@ function submitDonor(e) {
   showToast(`${name} registered as donor ✓`);
 }
 
-function submitVolunteer(e) {
-  e.preventDefault();
-  const name  = document.getElementById('volName').value;
-  const phone = document.getElementById('volPhone').value;
-  const skill = document.getElementById('volSkill').value;
 
-  store.volunteers.push({ id: store.volunteers.length+1, name, phone, skill, status:'available', camp:'Unassigned' });
-  store.activity.unshift({ text:`Volunteer registered: ${name} · ${skill}`, color:'green', time:'just now' });
-  closeModal('addVolunteerModal');
-  e.target.reset();
-  renderVolunteers();
-  renderDashboard();
-  showToast(`${name} registered as volunteer ✓`);
-}
 
 function submitDonation(e) {
   e.preventDefault();
@@ -452,10 +622,10 @@ function submitDonation(e) {
 // ======= INIT =======
 function init() {
   renderDashboard();
+  initMap();
   renderCamps();
-  renderRequests('all');
   renderDonors();
-  renderVolunteers();
+
   renderSMSParsed();
 }
 

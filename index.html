@@ -1,542 +1,254 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ReliefNet — Disaster Rescue Management</title>
-  <meta name="description" content="Smart disaster rescue management platform connecting affected communities, relief camps, donors, and volunteers in real time."/>
+  <title>ReliefNet — Public Portal</title>
+  <meta name="description" content="Find nearby disaster relief camps and donate resources."/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css"/>
-  <script>
-    // Session guard — redirect to login if not authenticated
-    (async () => {
-      try {
-        const res = await fetch('/api/me');
-        if (!res.ok) { window.location.href = '/login.html'; return; }
-        const data = await res.json();
-        if (!data.ok) { window.location.href = '/login.html'; }
-      } catch {
-        // Server not running — allow file:// fallback for static preview only
-      }
-    })();
-  </script>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  
+  <style>
+    :root {
+      --green: #4c9964;
+      --green-hover: #3a804f;
+      --white: #ffffff;
+      --bg: #f9fafb;
+      --border: #e5e7eb;
+      --text: #1f2937;
+      --text-2: #4b5563;
+      --text-3: #9ca3af;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); padding-bottom: 60px; }
+    
+    header {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo { font-size: 1.25rem; font-weight: 700; color: var(--green); }
+    
+    main { max-width: 800px; margin: 0 auto; padding: 2rem 1rem; }
+    
+    h1 { font-size: 1.8rem; font-weight: 600; margin-bottom: .5rem; text-align: center; }
+    p.subtitle { color: var(--text-2); text-align: center; margin-bottom: 2rem; }
+    
+    .map-wrapper {
+      background: var(--white);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+    
+    #map { width: 100%; height: 450px; background: #eaebec; }
+    
+    .status-panel {
+      padding: 1.5rem;
+      text-align: center;
+    }
+    
+    .spinner {
+      width: 24px; height: 24px;
+      border: 3px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center; justify-content: center;
+      padding: 12px 24px;
+      font-size: 1rem; font-weight: 600; font-family: inherit;
+      border-radius: 99px; cursor: pointer;
+      text-decoration: none; transition: .15s; border: none;
+    }
+    .btn-primary { background: var(--green); color: var(--white); width: 100%; max-width: 300px; }
+    .btn-primary:hover { background: var(--green-hover); }
+    
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-2); }
+    .btn-outline:hover { background: var(--white); border-color: #bbb; }
+    
+    .actions-grid {
+      display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem;
+    }
+
+    /* ======= DONATE MODAL ======= */
+    .donate-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+    }
+    .donate-overlay.open { display: flex; }
+    .donate-modal {
+      background: var(--white); border-radius: var(--radius); width: 95%; max-width: 480px;
+      max-height: 90vh; overflow-y: auto; padding: 2rem;
+      animation: slideUp .25s ease;
+    }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .donate-modal h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: .25rem; }
+    .donate-modal .subtitle { font-size: .85rem; color: var(--text-3); margin-bottom: 1.5rem; }
+    .form-group { margin-bottom: 1.25rem; }
+    .form-label { display: block; font-size: .82rem; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 10px 14px; font-size: .9rem; font-family: inherit;
+      border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+      color: var(--text); outline: none; transition: border-color .15s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--green); }
+    .form-textarea { resize: vertical; min-height: 70px; }
+    .toggle-group { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .toggle-btn {
+      flex: 1; padding: 10px; text-align: center; font-size: .85rem; font-weight: 500;
+      font-family: inherit; cursor: pointer; border: none; background: var(--bg);
+      color: var(--text-2); transition: .15s;
+    }
+    .toggle-btn.active { background: var(--green); color: #fff; }
+    .form-actions { display: flex; gap: .75rem; margin-top: 1.5rem; }
+    .form-actions .btn { flex: 1; padding: 11px; font-size: .9rem; border-radius: 8px; }
+    .btn-cancel { background: var(--bg); color: var(--text-2); border: 1px solid var(--border); cursor: pointer; font-family: inherit; font-weight: 500; }
+    .btn-cancel:hover { background: #eee; }
+    .btn-submit { background: var(--green); color: #fff; border: none; cursor: pointer; font-family: inherit; font-weight: 600; }
+    .btn-submit:hover { background: var(--green-hover); }
+    .toast-public {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #1f2937; color: #fff; padding: 12px 24px; border-radius: 8px;
+      font-size: .875rem; z-index: 99999; opacity: 0; transition: opacity .3s;
+      pointer-events: none;
+    }
+    .toast-public.show { opacity: 1; }
+
+    /* ======= MAP MARKERS (inline for public page) ======= */
+    .custom-map-marker { display: flex; align-items: center; justify-content: center; }
+    .marker-user {
+      width: 14px; height: 14px; border-radius: 50%;
+      background-color: #4285F4; border: 2.5px solid #fff;
+      box-shadow: 0 0 8px rgba(66,133,244,0.5);
+    }
+    .camp-marker-serious { position: relative; display: flex; align-items: center; justify-content: center; width: 28px; height: 32px; }
+    .marker-icon { position: relative; z-index: 2; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4)); }
+    .marker-pulse {
+      position: absolute; top: 50%; left: 50%; margin-top: -14px; margin-left: -14px;
+      width: 28px; height: 28px; border-radius: 50%; z-index: 1;
+      animation: radar-pulse 2.2s infinite ease-out;
+    }
+    @keyframes radar-pulse {
+      0% { transform: scale(0.8); opacity: 0.8; }
+      100% { transform: scale(2.4); opacity: 0; }
+    }
+
+    .map-legend {
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(6px);
+      padding: 10px 14px; border-radius: 8px; font-size: .78rem;
+      line-height: 1.7; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+    .legend-title { font-weight: 700; font-size: .8rem; margin-bottom: 4px; color: #1f2937; }
+    .legend-item { display: flex; align-items: center; gap: 8px; color: #374151; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 1.5px solid #fff; box-shadow: 0 0 3px rgba(0,0,0,0.2); }
+    
+  </style>
 </head>
 <body>
 
-<!-- Sidebar Navigation -->
-<aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo">
-    <span class="logo-text">ReliefNet</span>
+<header>
+  <div class="logo">ReliefNet</div>
+  <div>
+    <a href="/login.html" class="btn btn-outline" style="padding: 8px 16px; font-size: .85rem;">Ward Member Login</a>
   </div>
-  <nav class="sidebar-nav">
-    <a href="#" class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
-      Dashboard
-    </a>
-    <a href="#" class="nav-item" data-page="camps" onclick="navigateTo('camps')">
-      Relief Camps
-    </a>
-    <a href="#" class="nav-item" data-page="requests" onclick="navigateTo('requests')">
-      Need Requests
-    </a>
-    <a href="#" class="nav-item" data-page="donors" onclick="navigateTo('donors')">
-      Donors
-    </a>
-    <a href="#" class="nav-item" data-page="volunteers" onclick="navigateTo('volunteers')">
-      Volunteers
-    </a>
-    <a href="#" class="nav-item" data-page="sms" onclick="navigateTo('sms')">
-      SMS Gateway
-    </a>
-  </nav>
-  <div class="sidebar-footer">
-    <div class="user-info" id="sidebarUser">
-      <span class="status-dot"></span>
-      <div>
-        <div class="user-name" id="userName">Loading...</div>
-        <div class="user-ward" id="userWard"></div>
-      </div>
+</header>
+
+<main>
+  <h1>Nearby Relief Camps</h1>
+  <p class="subtitle">Allow location access to find operational disaster rescue hubs near you.</p>
+  
+  <div class="map-wrapper">
+    <div id="statusPanel" class="status-panel">
+      <div class="spinner" id="spinner"></div>
+      <p id="statusText">Requesting geographic location...</p>
     </div>
-    <button class="logout-btn" id="logoutBtn" onclick="logout()">Logout</button>
+    
+    <div id="map" style="display: none;"></div>
   </div>
-</aside>
 
-<!-- Mobile Top Bar -->
-<div class="topbar">
-  <button class="menu-btn" onclick="toggleSidebar()" id="menuBtn">&#9776;</button>
-  <span class="topbar-title">ReliefNet</span>
-  <span class="topbar-alert" id="topbarAlert"></span>
-</div>
-
-<!-- Main Content Area -->
-<main class="main-content" id="mainContent">
-
-  <!-- ===================== DASHBOARD PAGE ===================== -->
-  <section class="page active" id="page-dashboard">
-    <div class="page-header">
-      <div>
-        <h1>Overview</h1>
-        <p class="subtitle">Live disaster relief coordination status</p>
-      </div>
-      <button class="btn btn-primary" onclick="openModal('reportNeedModal')">+ Report Need</button>
-    </div>
-
-    <!-- Stats Row -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-number" id="statCamps">12</div>
-        <div class="stat-label">Active Camps</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number accent" id="statRequests">47</div>
-        <div class="stat-label">Pending Requests</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" id="statDonors">89</div>
-        <div class="stat-label">Donors Active</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" id="statVolunteers">34</div>
-        <div class="stat-label">Volunteers</div>
-      </div>
-    </div>
-
-    <!-- Map + Priority Column -->
-    <div class="two-col">
-      <!-- Map -->
-      <div class="card map-card">
-        <div class="card-header">
-          <span>Affected Area Map</span>
-          <div class="legend">
-            <span class="legend-item critical">Critical</span>
-            <span class="legend-item moderate">Moderate</span>
-            <span class="legend-item stable">Stable</span>
-          </div>
-        </div>
-        <div class="map-container" id="mapContainer">
-          <svg viewBox="0 0 600 360" class="map-svg" xmlns="http://www.w3.org/2000/svg">
-            <!-- Background regions -->
-            <rect width="600" height="360" fill="#f5f5f5" rx="12"/>
-            <!-- Grid lines -->
-            <line x1="0" y1="120" x2="600" y2="120" stroke="#e0e0e0" stroke-width="1"/>
-            <line x1="0" y1="240" x2="600" y2="240" stroke="#e0e0e0" stroke-width="1"/>
-            <line x1="200" y1="0" x2="200" y2="360" stroke="#e0e0e0" stroke-width="1"/>
-            <line x1="400" y1="0" x2="400" y2="360" stroke="#e0e0e0" stroke-width="1"/>
-
-            <!-- Critical zones (red tint) -->
-            <ellipse cx="150" cy="100" rx="70" ry="50" fill="rgba(220,53,53,0.15)" stroke="rgba(220,53,53,0.4)" stroke-width="1.5"/>
-            <ellipse cx="430" cy="260" rx="80" ry="55" fill="rgba(220,53,53,0.12)" stroke="rgba(220,53,53,0.35)" stroke-width="1.5"/>
-
-            <!-- Moderate zones (orange tint) -->
-            <ellipse cx="320" cy="150" rx="65" ry="45" fill="rgba(255,160,0,0.13)" stroke="rgba(255,160,0,0.4)" stroke-width="1.5"/>
-            <ellipse cx="100" cy="270" rx="55" ry="40" fill="rgba(255,160,0,0.12)" stroke="rgba(255,160,0,0.35)" stroke-width="1.5"/>
-
-            <!-- Stable zone (green) -->
-            <ellipse cx="500" cy="100" rx="60" ry="40" fill="rgba(76,153,100,0.12)" stroke="rgba(76,153,100,0.4)" stroke-width="1.5"/>
-
-            <!-- Camp markers -->
-            <g class="camp-marker" onclick="showZoneInfo('Camp Alpha · District 3')">
-              <circle cx="150" cy="100" r="12" fill="#4c9964" stroke="white" stroke-width="2"/>
-              <text x="150" y="105" text-anchor="middle" fill="white" font-size="10" font-weight="700">C1</text>
-            </g>
-            <g class="camp-marker" onclick="showZoneInfo('Camp Beta · District 7')">
-              <circle cx="320" cy="150" r="12" fill="#4c9964" stroke="white" stroke-width="2"/>
-              <text x="320" y="155" text-anchor="middle" fill="white" font-size="10" font-weight="700">C2</text>
-            </g>
-            <g class="camp-marker" onclick="showZoneInfo('Camp Gamma · District 11')">
-              <circle cx="430" cy="260" r="12" fill="#4c9964" stroke="white" stroke-width="2"/>
-              <text x="430" y="265" text-anchor="middle" fill="white" font-size="10" font-weight="700">C3</text>
-            </g>
-            <g class="camp-marker" onclick="showZoneInfo('Camp Delta · District 2')">
-              <circle cx="100" cy="270" r="12" fill="#4c9964" stroke="white" stroke-width="2"/>
-              <text x="100" y="275" text-anchor="middle" fill="white" font-size="10" font-weight="700">C4</text>
-            </g>
-            <g class="camp-marker" onclick="showZoneInfo('Camp Echo · District 14')">
-              <circle cx="500" cy="100" r="12" fill="#4c9964" stroke="white" stroke-width="2"/>
-              <text x="500" y="105" text-anchor="middle" fill="white" font-size="10" font-weight="700">C5</text>
-            </g>
-
-            <!-- People request dots -->
-            <circle cx="170" cy="80" r="5" fill="rgba(220,53,53,0.7)"/>
-            <circle cx="130" cy="120" r="4" fill="rgba(220,53,53,0.6)"/>
-            <circle cx="165" cy="110" r="3" fill="rgba(220,53,53,0.5)"/>
-            <circle cx="450" cy="240" r="5" fill="rgba(220,53,53,0.7)"/>
-            <circle cx="410" cy="275" r="4" fill="rgba(220,53,53,0.6)"/>
-            <circle cx="340" cy="140" r="4" fill="rgba(255,160,0,0.8)"/>
-            <circle cx="300" cy="165" r="3" fill="rgba(255,160,0,0.7)"/>
-            <circle cx="90" cy="255" r="4" fill="rgba(255,160,0,0.7)"/>
-            <circle cx="115" cy="285" r="3" fill="rgba(255,160,0,0.6)"/>
-
-            <!-- Compass -->
-            <text x="570" y="30" text-anchor="middle" fill="#aaa" font-size="11" font-family="Inter, sans-serif">N</text>
-            <line x1="570" y1="33" x2="570" y2="45" stroke="#aaa" stroke-width="1"/>
-          </svg>
-          <div class="map-tooltip" id="mapTooltip"></div>
-        </div>
-      </div>
-
-      <!-- Priority Requests -->
-      <div class="card priority-card">
-        <div class="card-header"><span>Priority Requests</span></div>
-        <div class="request-list" id="priorityList">
-          <!-- populated by JS -->
-        </div>
-      </div>
-    </div>
-
-    <!-- Recent Activity -->
-    <div class="card">
-      <div class="card-header"><span>Recent Activity</span></div>
-      <div class="activity-list" id="activityList">
-        <!-- populated by JS -->
-      </div>
-    </div>
-  </section>
-
-  <!-- ===================== CAMPS PAGE ===================== -->
-  <section class="page" id="page-camps">
-    <div class="page-header">
-      <div>
-        <h1>Relief Camps</h1>
-        <p class="subtitle">Manage and monitor all active relief hubs</p>
-      </div>
-      <button class="btn btn-primary" onclick="openModal('addCampModal')">+ Add Camp</button>
-    </div>
-    <div class="search-bar">
-      <input type="text" id="campSearch" placeholder="Search camps..." oninput="filterCamps()" class="search-input"/>
-    </div>
-    <div class="camps-grid" id="campsGrid">
-      <!-- populated by JS -->
-    </div>
-  </section>
-
-  <!-- ===================== REQUESTS PAGE ===================== -->
-  <section class="page" id="page-requests">
-    <div class="page-header">
-      <div>
-        <h1>Need Requests</h1>
-        <p class="subtitle">All incoming aid requests from affected areas</p>
-      </div>
-      <button class="btn btn-primary" onclick="openModal('reportNeedModal')">+ New Request</button>
-    </div>
-    <div class="filter-row">
-      <button class="filter-btn active" onclick="filterRequests('all', this)">All</button>
-      <button class="filter-btn" onclick="filterRequests('critical', this)">Critical</button>
-      <button class="filter-btn" onclick="filterRequests('moderate', this)">Moderate</button>
-      <button class="filter-btn" onclick="filterRequests('pending', this)">Pending</button>
-      <button class="filter-btn" onclick="filterRequests('fulfilled', this)">Fulfilled</button>
-    </div>
-    <div class="table-wrapper">
-      <table class="data-table" id="requestsTable">
-        <thead>
-          <tr>
-            <th>Location</th>
-            <th>Type</th>
-            <th>People</th>
-            <th>Urgency</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="requestsBody">
-          <!-- populated by JS -->
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- ===================== DONORS PAGE ===================== -->
-  <section class="page" id="page-donors">
-    <div class="page-header">
-      <div>
-        <h1>Donors</h1>
-        <p class="subtitle">Resource contributors and their pledges</p>
-      </div>
-      <button class="btn btn-primary" onclick="openModal('addDonorModal')">+ Register Donor</button>
-    </div>
-    <div class="donors-grid" id="donorsGrid">
-      <!-- populated by JS -->
-    </div>
-    <div class="card" style="margin-top:1.5rem">
-      <div class="card-header"><span>Donate Resources to a Camp</span></div>
-      <form class="donate-form" onsubmit="submitDonation(event)">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Select Camp</label>
-            <select class="form-control" id="donateCamp">
-              <option value="">Choose camp...</option>
-              <option>Camp Alpha · District 3</option>
-              <option>Camp Beta · District 7</option>
-              <option>Camp Gamma · District 11</option>
-              <option>Camp Delta · District 2</option>
-              <option>Camp Echo · District 14</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Resource Type</label>
-            <select class="form-control" id="donateType">
-              <option>Food Packets</option>
-              <option>Water Bottles</option>
-              <option>Medicine</option>
-              <option>Clothes</option>
-              <option>Blankets</option>
-              <option>Other</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Quantity</label>
-            <input type="number" class="form-control" id="donateQty" placeholder="e.g. 100" min="1"/>
-          </div>
-        </div>
-        <button type="submit" class="btn btn-primary">Confirm Donation</button>
-      </form>
-    </div>
-  </section>
-
-  <!-- ===================== VOLUNTEERS PAGE ===================== -->
-  <section class="page" id="page-volunteers">
-    <div class="page-header">
-      <div>
-        <h1>Volunteers</h1>
-        <p class="subtitle">Coordinate volunteer assignments and deliveries</p>
-      </div>
-      <button class="btn btn-primary" onclick="openModal('addVolunteerModal')">+ Register</button>
-    </div>
-    <div class="volunteers-grid" id="volunteersGrid">
-      <!-- populated by JS -->
-    </div>
-  </section>
-
-  <!-- ===================== SMS GATEWAY PAGE ===================== -->
-  <section class="page" id="page-sms">
-    <div class="page-header">
-      <div>
-        <h1>SMS Gateway</h1>
-        <p class="subtitle">Emergency requests via SMS — works in low connectivity</p>
-      </div>
-    </div>
-    <div class="two-col">
-      <div class="card">
-        <div class="card-header"><span>Simulate Incoming SMS</span></div>
-        <p class="helper-text">Format: <code>HELP [TYPE] [PEOPLE] LOCATION [PINCODE]</code></p>
-        <div class="sms-terminal" id="smsTerminal">
-          <div class="sms-line received">IN: HELP FOOD 5 PEOPLE LOCATION 600001</div>
-          <div class="sms-line system">OK Parsed: Food · 5 people · PIN 600001 · Added to queue</div>
-          <div class="sms-line received">IN: HELP WATER 12 PEOPLE LOCATION 600032</div>
-          <div class="sms-line system">OK Parsed: Water · 12 people · PIN 600032 · Added to queue</div>
-        </div>
-        <div class="sms-input-row">
-          <input type="text" id="smsInput" class="form-control" placeholder="HELP FOOD 10 PEOPLE LOCATION 560001" />
-          <button class="btn btn-primary" onclick="sendSMS()">Send</button>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header"><span>Parsed SMS Requests</span></div>
-        <div id="smsParsedList" class="request-list">
-          <!-- populated by JS -->
-        </div>
-      </div>
-    </div>
-    <div class="card" style="margin-top:1.5rem">
-      <div class="card-header"><span>Smart Resource Prioritization</span></div>
-      <div class="priority-rules">
-        <div class="priority-rule">
-          <span class="rule-badge critical">1</span>
-          <div>
-            <strong>Urgency Level</strong>
-            <p>Critical needs (water, medicine) are prioritized over moderate ones.</p>
-          </div>
-        </div>
-        <div class="priority-rule">
-          <span class="rule-badge moderate">2</span>
-          <div>
-            <strong>People Affected</strong>
-            <p>Requests covering more people get higher queue priority automatically.</p>
-          </div>
-        </div>
-        <div class="priority-rule">
-          <span class="rule-badge stable">3</span>
-          <div>
-            <strong>Distance from Camp</strong>
-            <p>Nearest available camp is auto-assigned to minimize response time.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
+  <div class="actions-grid">
+    <button class="btn btn-primary" onclick="openDonateModal()">Donate Resources</button>
+  </div>
 </main>
 
-<!-- ===================== MODALS ===================== -->
-
-<!-- Report Need Modal -->
-<div class="modal-overlay" id="reportNeedModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Report a Need</h2>
-      <button class="modal-close" onclick="closeModal('reportNeedModal')">✕</button>
-    </div>
-    <form onsubmit="submitNeedRequest(event)">
+<!-- Donate Modal -->
+<div class="donate-overlay" id="donateOverlay" onclick="if(event.target===this)closeDonateModal()">
+  <div class="donate-modal">
+    <h2>Donate Resources</h2>
+    <p class="subtitle">Help communities in need by contributing supplies.</p>
+    <form id="donateForm" onsubmit="submitDonation(event)">
       <div class="form-group">
-        <label>Location / Area Name</label>
-        <input type="text" class="form-control" id="needLocation" placeholder="e.g. Sector 4, Chennai" required/>
-      </div>
-      <div class="form-group">
-        <label>PIN Code</label>
-        <input type="text" class="form-control" id="needPin" placeholder="6-digit PIN" maxlength="6" required/>
-      </div>
-      <div class="form-group">
-        <label>Resource Needed</label>
-        <select class="form-control" id="needType">
-          <option>Food</option>
-          <option>Water</option>
-          <option>Medicine</option>
-          <option>Clothes</option>
-          <option>Shelter</option>
-          <option>Other</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Number of People</label>
-        <input type="number" class="form-control" id="needPeople" placeholder="e.g. 25" min="1" required/>
-      </div>
-      <div class="form-group">
-        <label>Urgency</label>
-        <div class="radio-group">
-          <label class="radio-label"><input type="radio" name="urgency" value="critical" checked/> Critical</label>
-          <label class="radio-label"><input type="radio" name="urgency" value="moderate"/> Moderate</label>
-          <label class="radio-label"><input type="radio" name="urgency" value="low"/> Low</label>
+        <label class="form-label">Donor Type</label>
+        <div class="toggle-group">
+          <button type="button" class="toggle-btn active" onclick="setDonorType('personal',this)">Personal</button>
+          <button type="button" class="toggle-btn" onclick="setDonorType('organisation',this)">Organisation</button>
         </div>
       </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('reportNeedModal')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Submit Request</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Add Camp Modal -->
-<div class="modal-overlay" id="addCampModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Register Relief Camp</h2>
-      <button class="modal-close" onclick="closeModal('addCampModal')">✕</button>
-    </div>
-    <form onsubmit="submitCamp(event)">
+      <input type="hidden" id="donorType" value="personal">
       <div class="form-group">
-        <label>Camp Name</label>
-        <input type="text" class="form-control" id="campName" placeholder="e.g. Camp Zeta" required/>
+        <label class="form-label" id="nameLabel">Your Name</label>
+        <input class="form-input" id="donorName" placeholder="Enter your name" required>
       </div>
       <div class="form-group">
-        <label>District / Region</label>
-        <input type="text" class="form-control" id="campDistrict" placeholder="e.g. District 8" required/>
+        <label class="form-label">Phone Number</label>
+        <input class="form-input" id="donorPhone" type="tel" placeholder="+91 98000 00000" required>
       </div>
       <div class="form-group">
-        <label>Capacity (people)</label>
-        <input type="number" class="form-control" id="campCapacity" placeholder="e.g. 200" required/>
-      </div>
-      <div class="form-group">
-        <label>Contact Person</label>
-        <input type="text" class="form-control" id="campContact" placeholder="Full name"/>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('addCampModal')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Register Camp</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Add Donor Modal -->
-<div class="modal-overlay" id="addDonorModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Register Donor</h2>
-      <button class="modal-close" onclick="closeModal('addDonorModal')">✕</button>
-    </div>
-    <form onsubmit="submitDonor(event)">
-      <div class="form-group">
-        <label>Name / Organization</label>
-        <input type="text" class="form-control" id="donorName" placeholder="e.g. Aid India Trust" required/>
-      </div>
-      <div class="form-group">
-        <label>Contact Number</label>
-        <input type="tel" class="form-control" id="donorPhone" placeholder="+91 XXXXXXXXXX"/>
-      </div>
-      <div class="form-group">
-        <label>Primary Resource</label>
-        <select class="form-control" id="donorResource">
+        <label class="form-label">Resource Type</label>
+        <select class="form-select" id="donorResource" required>
+          <option value="" disabled selected>Select resource</option>
           <option>Food</option>
           <option>Water</option>
           <option>Medicine</option>
           <option>Clothes</option>
+          <option>Blankets</option>
+          <option>Shelter Materials</option>
           <option>Funds</option>
         </select>
       </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('addDonorModal')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Register</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Add Volunteer Modal -->
-<div class="modal-overlay" id="addVolunteerModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Register Volunteer</h2>
-      <button class="modal-close" onclick="closeModal('addVolunteerModal')">✕</button>
-    </div>
-    <form onsubmit="submitVolunteer(event)">
       <div class="form-group">
-        <label>Full Name</label>
-        <input type="text" class="form-control" id="volName" placeholder="Your name" required/>
+        <label class="form-label">Quantity / Description</label>
+        <input class="form-input" id="donorQty" placeholder="e.g. 200 food packets" required>
       </div>
       <div class="form-group">
-        <label>Phone</label>
-        <input type="tel" class="form-control" id="volPhone" placeholder="+91 XXXXXXXXXX"/>
-      </div>
-      <div class="form-group">
-        <label>Skill / Role</label>
-        <select class="form-control" id="volSkill">
-          <option>Delivery</option>
-          <option>Medical</option>
-          <option>Logistics</option>
-          <option>Communication</option>
-          <option>Search & Rescue</option>
+        <label class="form-label">Select Camp</label>
+        <select class="form-select" id="donorCamp" required>
+          <option value="" disabled selected>Choose a camp</option>
         </select>
       </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('addVolunteerModal')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Register</button>
+      <div class="form-group">
+        <label class="form-label">Additional Notes (optional)</label>
+        <textarea class="form-textarea" id="donorNotes" placeholder="Any other details..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-cancel" onclick="closeDonateModal()">Cancel</button>
+        <button type="submit" class="btn btn-submit">Submit Donation</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- Toast -->
-<div class="toast" id="toast"></div>
+<div class="toast-public" id="toastPublic"></div>
 
-<script src="app.js"></script>
-<script>
-async function logout() {
-  await fetch('/api/logout', { method: 'POST' });
-  window.location.href = '/login.html';
-}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="data.js"></script>
+<script src="public.js"></script>
 
-// Populate sidebar with logged-in user info
-(async () => {
-  try {
-    const res  = await fetch('/api/me');
-    const data = await res.json();
-    if (data.ok && data.user) {
-      document.getElementById('userName').textContent  = data.user.name;
-      document.getElementById('userWard').textContent  = `Ward ${data.user.ward_number} · ${data.user.district}`;
-    }
-  } catch {}
-})();
-</script>
 </body>
 </html>
